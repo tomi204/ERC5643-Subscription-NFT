@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
+import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 
+//@dev interface for ERC5643
 interface IERC5643 {
     event SubscriptionUpdate(uint256 indexed tokenId, uint64 expiration);
     function renewSubscription(uint256 tokenId, uint64 duration) external payable;
@@ -18,8 +21,9 @@ contract Subscription is IERC5643 {
     Counters.Counter private _tokenIds;
     
     //@dev mapping
-    mapping (uint256 => uint64) private _expirations;
-    mapping(uint256 => bool) private _renewable;
+    mapping (uint256 => uint64) private expirations;
+    mapping(uint256 => uint64) private renewable
+    mapping(bytes => bool) private signatures;
     mapping (uint256 => uint256) _price;
 
 // @dev constructor
@@ -49,6 +53,17 @@ contract Subscription is IERC5643 {
         require(_renewable[tokenId], "Subscription is not renewable");
         require(msg.value == _price[tokenId], "Price is not correct");
         _expirations[tokenId] = uint64(block.timestamp) + duration;
+        emit SubscriptionUpdate(tokenId, _expirations[tokenId]);
+    }
+
+    //@dev cancel subscription function
+    function cancelSubscription(uint256 tokenId) public payable override {
+        require(_isApprovedOrOwner(msg.sender, tokenId), "Caller is not owner nor approved");
+        require(_renewable[tokenId], "Subscription is not renewable");
+        require(msg.value == _price[tokenId], "Price is not correct");
+        _renewable[tokenId] = false;
+        delete _expirations[tokenId];
+        delete _price[tokenId];
         emit SubscriptionUpdate(tokenId, _expirations[tokenId]);
     }
    
