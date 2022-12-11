@@ -16,7 +16,10 @@ interface IERC5643 {
     function isRenewable(uint256 tokenId) external view returns(bool);
 }
 contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, ERC721Burnable {
-    //@dev state variables 
+
+///////////////////////////////////////////////////
+ ////// @dev state variables 
+//////////////////////////////////////////////////
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
     
@@ -26,19 +29,17 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
     mapping(bytes => bool) private signatures;
     mapping (uint256 => uint256) public _price;
 
-// @dev constructor
-     constructor(string memory name, string memory symbol) ERC721(name, symbol) {
 
-        
-    }
+////////////////////////////////////
+/////////////@dev constructor
+//////////////////////////////
+     constructor(string memory name, string memory symbol) ERC721(name, symbol){}
+
     //@dev function for support interface
     function supportsInterface(bytes4 interfaceId) public view virtual override(ERC721, ERC721ENUMERABLE)  returns (bool) {
         returns super.supportsInterface(interfaceId) || interfaceId == type(IERC5643).interfaceId;
     }
-    //@dev function for look up expiration date
-    function expiresAt(uint256 tokenId) public view override returns(uint64) {
-        return expirations[tokenId];
-    }
+   
 
     //@dev mint subscription function 
     function mintSubscription(address to, uint64 duration, byte memory _signature, uint256 _value, uint64 _renewable, uint256 _timeStamp) public payable {
@@ -59,7 +60,7 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
         emit SubscriptionUpdate(newTokenId, expirations[newTokenId]);
         }
     
-    //@dev renew subscription function
+    // @dev renew subscription function
     function renewSubscription(uint256 tokenId, uint64 duration) public payable override {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Caller is not owner nor approved");
         require(renewable[tokenId], "Subscription is not renewable");
@@ -91,17 +92,22 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
     }
     event SubscriptionUpdate(tokenId, expirations[tokenId]);
     
-
+////////////////////////////////////////////////////////////////////////////////
+///////@dev function view 
+////////////////////////////////////////////////////////////////////////////////
     //@dev function for view if subscription is renewable
     function isRenewable(uint256 tokenId) public view override returns(bool) {
         return renewable[tokenId];
     }
 
+ //@dev function for look up expiration date
+    function expiresAt(uint256 tokenId) public view override returns(uint64) {
+        return expirations[tokenId];
+    }
 
-
-    /////////////////////////////////////////////////////////////
-    ///////@dev internal functions
-    /////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////
+///////@dev internal functions
+/////////////////////////////////////////////////////////////
 
 
     function _recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
