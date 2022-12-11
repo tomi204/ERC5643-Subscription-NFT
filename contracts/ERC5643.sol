@@ -24,7 +24,7 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
     mapping (uint256 => uint64) private expirations;
     mapping(uint256 => uint64) private renewable
     mapping(bytes => bool) private signatures;
-    mapping (uint256 => uint256) _price;
+    mapping (uint256 => uint256) public _price;
 
 // @dev constructor
      constructor(string memory name, string memory symbol) ERC721(name, symbol) {
@@ -41,24 +41,42 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
     }
 
     //@dev mint subscription function 
-    function mintSubscription(address to, uint64 duration) public onlyOwner returns(uint256) {
-        require(msg.value >= 0.5 ether);
+    function mintSubscription(address to, uint64 duration, byte memory _signature, uint256 _value, uint64 _renewable, uint256 _timeStamp) public payable {
+        bytes32 message = keccak256(abi.encodePacked(to, duration, _renewable, _value, _timeStamp, address(this)));
+        require(msg.value == _value, "need the same value");
+        require(!signatures[_signature], "error signature");
+        require(_timeStamp + 5 minutes <= block.timestamp, "Error not time for signature");
+
+        signatures[_signature] = true;
+
         _tokenIds.increment();
-        uint256 newTokenId = _tokenIds.current();
-        _mint(to, newTokenId);
-      
-        expirations[newTokenId] = uint64(block.timestamp) + duration;
-        renewable[newTokenId] = true;
-        return newTokenId;
-    }
+        payable(owner()).transfer(msg.value); // transfer value to owner
+        uint256 newTokenId = _tokenIds.current(); // get new token id 
+        _mint(to, newTokenId); // mint token 
+        _price[newTokenId] = msg.value / duration; // set price for token
+        expirations[newTokenId] = uint64(block.timestamp) + _duration; // set expiration date for token
+        renewable[newTokenId] = uint64(block.timestamp) + _renewable; // set renewable for token
+        emit SubscriptionUpdate(newTokenId, expirations[newTokenId]);
+        }
     
     //@dev renew subscription function
     function renewSubscription(uint256 tokenId, uint64 duration) public payable override {
         require(_isApprovedOrOwner(msg.sender, tokenId), "Caller is not owner nor approved");
         require(renewable[tokenId], "Subscription is not renewable");
-        require(msg.value == _price[tokenId], "Price is not correct");
-        expirations[tokenId] = uint64(block.timestamp) + duration;
-        renewable[tokenId] = true;
+        require(msg.value == (_price[tokenId] * duration), "Price is not correct");
+        payable(owner()).transfer(_price[tokenId] * duration);
+        uint64 currentExpiration = expirations[tokenId];
+        uint64 newExpiration;
+        if (currentExpiration == 0 || currentExpiration < uint64(block.timestamp)) {
+        if(renewable[tokenId] > uint64(block.timestamp)){
+            revert("Subscription is not renewable");
+        }
+        newExpiration = uint64(block.timestamp) + duration;
+          
+    }else {
+        newExpiration = currentExpiration + duration;
+    }
+         expirations[tokenId] = newExpiration;
         emit SubscriptionUpdate(tokenId, expirations[tokenId]);
     }
 
@@ -72,5 +90,28 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
         emit SubscriptionUpdate(tokenId, expirations[tokenId]);
     }
     event SubscriptionUpdate(tokenId, expirations[tokenId]);
+    
+
+    //@dev function for view if subscription is renewable
+    function isRenewable(uint256 tokenId) public view override returns(bool) {
+        return renewable[tokenId];
+    }
+
+
+
+    /////////////////////////////////////////////////////////////
+    ///////@dev internal functions
+    /////////////////////////////////////////////////////////////
+
+
+    function _recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+
+        (v, r, s) = _splitSignature(sig);
+
+        return ecrecover(message, v, r, s);
+    }
    
 }
