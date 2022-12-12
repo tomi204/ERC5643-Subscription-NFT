@@ -47,7 +47,7 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
         require(msg.value == _value, "need the same value");
         require(!signatures[_signature], "error signature");
         require(_timeStamp + 5 minutes <= block.timestamp, "Error not time for signature");
-
+        require(owner() == _recoverSigner(message, _signature), "Signature Error");
         signatures[_signature] = true;
 
         _tokenIds.increment();
