@@ -3,6 +3,7 @@ pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
@@ -17,9 +18,9 @@ interface IERC5643 {
 }
 contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, Ownable, ERC721Burnable {
 
-///////////////////////////////////////////////////
- ////// @dev state variables 
-//////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+/////// @dev State Variables
+////////////////////////////////////////////////////////////////////////////////
     using Counters for Counters.Counter;
     Counters.Counter private _tokenIds;
     
@@ -30,9 +31,9 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
     mapping (uint256 => uint256) public _price;
 
 
-////////////////////////////////////
-/////////////@dev constructor
-//////////////////////////////
+////////////////////////////////////////////////////////////////////////////////
+ ////@dev constructor
+////////////////////////////////////////////////////////////////////////////////
      constructor(string memory name, string memory symbol) ERC721(name, symbol){}
 
     //@dev function for support interface
@@ -93,23 +94,46 @@ contract Subscription is IERC5643, ERC721, ERC721Enumerable, ERC721URIStorage, O
     event SubscriptionUpdate(tokenId, expirations[tokenId]);
     
 ////////////////////////////////////////////////////////////////////////////////
-///////@dev function view 
+///////@dev view functions
 ////////////////////////////////////////////////////////////////////////////////
     //@dev function for view if subscription is renewable
     function isRenewable(uint256 tokenId) public view override returns(bool) {
         return renewable[tokenId];
     }
 
- //@dev function for look up expiration date
+  //@dev function for look up expiration date
     function expiresAt(uint256 tokenId) public view override returns(uint64) {
         return expirations[tokenId];
     }
+
+
+
+/////////////////////////////////////////////////////////////
+///////@dev functions for change the state of contract
+/////////////////////////////////////////////////////////////
+
+//@dev function for pause contract
+function pause() public onlyOwner {
+    _pause();
+}
+//@dev function for unpause contract
+function unpause() public onlyOwner {
+    _unpause();
+}
 
 /////////////////////////////////////////////////////////////
 ///////@dev internal functions
 /////////////////////////////////////////////////////////////
 
+function _beforeTokenTransfer(address from, address to, uint256 tokenId, uint256 batchSize)
+        internal
+        whenNotPaused
+        override(ERC721, ERC721Enumerable)
+    {
+        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    }
 
+   //@dev function for split signature
     function _recoverSigner(bytes32 message, bytes memory sig) internal pure returns (address) {
         uint8 v;
         bytes32 r;
