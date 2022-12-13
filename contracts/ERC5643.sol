@@ -2,7 +2,6 @@
 pragma solidity 0.8.9;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -11,19 +10,13 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 //@dev interface for ERC5643
 interface IERC5643 {
     event SubscriptionUpdate(uint256 indexed tokenId, uint64 expiration);
-
-    function renewSubscription(uint256 tokenId, uint64 duration)
-        external
-        payable;
-
+    function renewSubscription(uint256 tokenId, uint64 duration) external payable;
     function cancelSubscription(uint256 tokenId) external payable;
-
-    function expiresAt(uint256 tokenId) external view returns (uint64);
-
-    function isRenewable(uint256 tokenId) external view returns (bool);
+    function expiresAt(uint256 tokenId) external view returns(uint64);
+    function isRenewable(uint256 tokenId) external view returns(bool);
 }
 
-contract Subscriptions is ERC721, IERC5643, ERC721Enumerable, ERC721URIStorage, Pausable, Ownable, ERC721Burnable {
+contract SubscriptionsNFT is ERC721, ERC721Enumerable, IERC5643, ERC721Burnable, Ownable,  Pausable   {
 
     ////////////////////////////////////////////////////////////////////////////////
     /////// @dev State Variables
@@ -40,9 +33,8 @@ contract Subscriptions is ERC721, IERC5643, ERC721Enumerable, ERC721URIStorage, 
     ////////////////////////////////////////////////////////////////////////////////
     ////@dev constructor
     ////////////////////////////////////////////////////////////////////////////////
-    constructor(string memory name, string memory symbol)
-        ERC721(name, symbol)
-    {}
+        constructor(string memory _name, string memory _symbol) ERC721(_name, _symbol) {}
+
 
     //@dev function for support interface
     function supportsInterface(bytes4 interfaceId)
@@ -99,45 +91,46 @@ contract Subscriptions is ERC721, IERC5643, ERC721Enumerable, ERC721URIStorage, 
     }
 
     // @dev renew subscription function
-    function renewSubscription(uint256 tokenId, uint64 duration)
+    function renewSubscription(uint256 _tokenId, uint64 duration)
         public
         payable
         override
     {
         require(
-            _isApprovedOrOwner(msg.sender, tokenId),
+            _isApprovedOrOwner(msg.sender, _tokenId),
             "Caller is not owner nor approved"
         );
         require(
-            msg.value == (_price[tokenId] * duration),
+            msg.value == (_price[_tokenId] * duration),
             "Price is not correct"
         );
-        payable(owner()).transfer(_price[tokenId] * duration);
-        uint64 currentExpiration = expirations[tokenId];
+        payable(owner()).transfer(_price[_tokenId] * duration);
+        uint64 currentExpiration = expirations[_tokenId];
         uint64 newExpiration;
         if (
             currentExpiration == 0 ||
             currentExpiration < uint64(block.timestamp)
         ) {
-            if (renewable[tokenId] > uint64(block.timestamp)) {
+            if (renewable[_tokenId] > uint64(block.timestamp)) {
                 revert("Subscription is not renewable");
             }
             newExpiration = uint64(block.timestamp) + duration;
         } else {
             newExpiration = currentExpiration + duration;
         }
-        expirations[tokenId] = newExpiration;
-        emit SubscriptionUpdate(tokenId, expirations[tokenId]);
+        expirations[_tokenId] = newExpiration;
+        emit SubscriptionUpdate(_tokenId, expirations[_tokenId]);
     }
 
     //@dev cancel subscription function
-    function cancelSubscription(uint256 tokenId) public payable override {
+    function cancelSubscription(uint256 _tokenId) public payable override {
         require(
-            _isApprovedOrOwner(msg.sender, tokenId),
+            _isApprovedOrOwner(msg.sender, _tokenId),
             "Caller is not owner nor approved"
         );
-        delete expirations[tokenId];
-        delete _price[tokenId];
+        delete expirations[_tokenId];
+        delete _price[_tokenId];
+        _tokenIds.decrement();
   
     }
 
@@ -146,13 +139,13 @@ contract Subscriptions is ERC721, IERC5643, ERC721Enumerable, ERC721URIStorage, 
     ///////@dev view functions
     ////////////////////////////////////////////////////////////////////////////////
     //@dev function for view if subscription is renewable
-   function isRenewable(uint256 tokenId) public view override returns(bool) {
-        return renewable[tokenId] >= uint64(block.timestamp);
+   function isRenewable(uint256 _tokenId) public view override returns(bool) {
+        return renewable[_tokenId] >= uint64(block.timestamp);
     }
 
     //@dev function for look up expiration date
-    function expiresAt(uint256 tokenId) public view override returns (uint64) {
-        return expirations[tokenId];
+    function expiresAt(uint256 _tokenId) public view override returns (uint64) {
+        return expirations[_tokenId];
     }
 
     /////////////////////////////////////////////////////////////
@@ -175,12 +168,13 @@ contract Subscriptions is ERC721, IERC5643, ERC721Enumerable, ERC721URIStorage, 
 
     function _beforeTokenTransfer(
         address from,
-        address to,
-        uint256 tokenId,
+        address _to,
+        uint256 _tokenId,
         uint256 batchSize
-    ) internal override(ERC721, ERC721Enumerable) whenNotPaused {
-        super._beforeTokenTransfer(from, to, tokenId, batchSize);
+    ) internal override whenNotPaused {
+        super._beforeTokenTransfer(from, _to, _tokenId, batchSize);
     }
+  
 
     //@dev function for recover signature
     function _recoverSigner(bytes32 message, bytes memory sig)
@@ -213,4 +207,5 @@ contract Subscriptions is ERC721, IERC5643, ERC721Enumerable, ERC721URIStorage, 
     
         return (v, r, s);
     }
+
 }
