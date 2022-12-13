@@ -167,12 +167,11 @@ contract SubscriptionsNFT is ERC721, ERC721Enumerable, IERC5643, ERC721Burnable,
     /////////////////////////////////////////////////////////////
 
     function _beforeTokenTransfer(
-        address from,
+        address _from,
         address _to,
-        uint256 _tokenId,
-        uint256 batchSize
-    ) internal override whenNotPaused {
-        super._beforeTokenTransfer(from, _to, _tokenId, batchSize);
+        uint256 _tokenId
+    ) internal override whenNotPaused  {
+        super._beforeTokenTransfer(_from, _to, _tokenId);
     }
   
 
