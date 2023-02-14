@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: SEE LICENSE IN LICENSE
-pragma solidity 0.8.9;
+pragma solidity ^0.8.13;
 import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
@@ -25,7 +25,6 @@ interface IERC5643 {
 
 contract SubscriptionsNFT is
     ERC721,
-    ERC721Enumerable,
     IERC5643,
     ERC721Burnable,
     Ownable,
@@ -54,7 +53,7 @@ contract SubscriptionsNFT is
     //@dev function for support interface
     function supportsInterface(
         bytes4 interfaceId
-    ) public view virtual override(ERC721, ERC721Enumerable) returns (bool) {
+    ) public view virtual override(ERC721) returns (bool) {
         return
             super.supportsInterface(interfaceId) ||
             interfaceId == type(IERC5643).interfaceId;
@@ -178,8 +177,8 @@ contract SubscriptionsNFT is
         address _from,
         address _to,
         uint256 _tokenId
-    ) internal override whenNotPaused {
-        super._beforeTokenTransfer(_from, _to, _tokenId);
+    ) internal whenNotPaused {
+        super._beforeTokenTransfer(_from, _to, _tokenId, 0);
     }
 
     //@dev function for recover signature

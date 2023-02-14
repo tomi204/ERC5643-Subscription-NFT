@@ -1,1 +1,1 @@
-ERC5643(SUBSCRIPCION) with Solidity & Hardhat.
+ERC5643(SUBSCRIPCION) with Solidity & Foundry.
